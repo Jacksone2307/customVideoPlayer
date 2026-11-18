@@ -10,7 +10,7 @@ A small, self-hosted video library built with browser Web Components and Node.js
 4. Open <http://localhost:8000>.
 5. Put video files in `backend/videos` and restart the server to index them.
 
-Supported formats: MP4, M4V, MOV, OGV, OGG, and WebM. The title is generated from each filename. The server creates the SQLite database on first start.
+Supported formats: MP4, M4V, MOV, OGV, OGG, and WebM. The title is generated from each filename. The catalogue uses the file creation date as the upload date (falling back to its modification date), shows newest videos first, and automatically plays the most recently added video. The server creates the SQLite database on first start.
 
 The current version is for browsing and playing files already placed in the video folder. It does not include an upload interface. The server listens on this computer only; add authentication and access controls before exposing it to a network.
 
@@ -21,4 +21,4 @@ The current version is for browsing and playing files already placed in the vide
 - `<video-datasource>` in `frontend/components/video-datasource.js` retrieves the catalogue from `/api/videos` and connects selection to the player.
 - `frontend/components/helpers/format-file-size.js` exports the shared file-size formatter.
 
-The Node server indexes video files into SQLite at startup and serves byte ranges so browser playback can seek.
+`backend/database.js` manages the SQLite catalogue, which stores each filename and upload date. Display titles come from filenames; file sizes and content types are read from disk. The server indexes video files at startup and serves byte ranges so browser playback can seek.

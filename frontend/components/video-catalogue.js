@@ -26,6 +26,16 @@ class VideoCatalogue extends HTMLElement {
                     minWidth: 90,
                     sortable: true,
                     valueFormatter: ({ value }) => formatFileSize(value)
+                },
+                {
+                    field: "uploadedAt",
+                    headerName: "Uploaded",
+                    flex: 1,
+                    minWidth: 120,
+                    sort: "desc",
+                    valueFormatter: ({ value }) => value
+                        ? new Date(value).toLocaleDateString()
+                        : ""
                 }
             ],
             defaultColDef: { resizable: true },

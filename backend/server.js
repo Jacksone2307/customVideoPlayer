@@ -1,7 +1,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
+const { openVideoDatabase } = require("./database");
 
 const projectDirectory = path.resolve(__dirname, "..");
 const frontendDirectory = path.join(projectDirectory, "frontend");
@@ -18,33 +18,12 @@ const supportedVideoTypes = new Map([
 
 fs.mkdirSync(videoDirectory, { recursive: true });
 
-const database = new DatabaseSync(databasePath);
-database.exec(`
-    CREATE TABLE IF NOT EXISTS videos (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        file_name TEXT NOT NULL UNIQUE,
-        mime_type TEXT NOT NULL,
-        size INTEGER NOT NULL
-    )
-`);
+const database = openVideoDatabase(databasePath);
 
-const saveVideo = database.prepare(`
-    INSERT INTO videos (id, title, file_name, mime_type, size)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        file_name = excluded.file_name,
-        mime_type = excluded.mime_type,
-        size = excluded.size
-`);
-const deleteVideo = database.prepare("DELETE FROM videos WHERE file_name = ?");
-const findVideo = database.prepare(
-    "SELECT id, title, file_name, mime_type, size FROM videos WHERE id = ?"
-);
-const listVideos = database.prepare(
-    "SELECT id, title, file_name, mime_type, size FROM videos ORDER BY title COLLATE NOCASE"
-);
+function uploadDateFromStats(stats) {
+    const timestamp = stats.birthtimeMs > 0 ? stats.birthtime : stats.mtime;
+    return timestamp.toISOString();
+}
 
 function titleFromFileName(fileName) {
     return path.basename(fileName, path.extname(fileName))
@@ -55,20 +34,13 @@ function titleFromFileName(fileName) {
 function indexVideos() {
     const videoFiles = fs.readdirSync(videoDirectory, { withFileTypes: true })
         .filter((entry) => entry.isFile() && supportedVideoTypes.has(path.extname(entry.name).toLowerCase()));
-    const currentFiles = new Set(videoFiles.map((entry) => entry.name));
-
-    for (const { file_name: fileName } of database.prepare("SELECT file_name FROM videos").all()) {
-        if (!currentFiles.has(fileName)) {
-            deleteVideo.run(fileName);
-        }
-    }
-
-    for (const entry of videoFiles) {
-        const fileName = entry.name;
-        const stats = fs.statSync(path.join(videoDirectory, fileName));
-        const mimeType = supportedVideoTypes.get(path.extname(fileName).toLowerCase());
-        saveVideo.run(fileName, titleFromFileName(fileName), fileName, mimeType, stats.size);
-    }
+    database.syncVideos(videoFiles.map((entry) => {
+        const stats = fs.statSync(path.join(videoDirectory, entry.name));
+        return {
+            fileName: entry.name,
+            uploadedAt: uploadDateFromStats(stats)
+        };
+    }));
 }
 
 function sendJson(response, statusCode, data) {
@@ -136,8 +108,8 @@ function parseByteRange(rangeHeader, size) {
     return { start, end };
 }
 
-function serveVideo(request, response, fileName) {
-    const video = findVideo.get(fileName);
+async function serveVideo(request, response, fileName) {
+    const video = database.findVideo(fileName);
     if (!video || path.basename(fileName) !== fileName) {
         sendNotFound(response);
         return;
@@ -150,12 +122,28 @@ function serveVideo(request, response, fileName) {
     }
 
     const filePath = path.join(videoDirectory, video.file_name);
+    let stats;
+    try {
+        stats = await fs.promises.stat(filePath);
+    } catch (error) {
+        if (error.code === "ENOENT") {
+            sendNotFound(response);
+            return;
+        }
+        console.error(`Unable to inspect ${filePath}:`, error);
+        response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Unable to read video.");
+        return;
+    }
+
+    const size = stats.size;
+    const mimeType = supportedVideoTypes.get(path.extname(fileName).toLowerCase());
     const rangeHeader = request.headers.range;
-    const range = rangeHeader ? parseByteRange(rangeHeader, video.size) : null;
+    const range = rangeHeader ? parseByteRange(rangeHeader, size) : null;
     if (rangeHeader && !range) {
         response.writeHead(416, {
             "Accept-Ranges": "bytes",
-            "Content-Range": `bytes */${video.size}`
+            "Content-Range": `bytes */${size}`
         });
         response.end();
         return;
@@ -163,15 +151,15 @@ function serveVideo(request, response, fileName) {
 
     const statusCode = range ? 206 : 200;
     const start = range ? range.start : 0;
-    const end = range ? range.end : video.size - 1;
+    const end = range ? range.end : size - 1;
     response.writeHead(statusCode, {
         "Accept-Ranges": "bytes",
-        "Content-Type": video.mime_type,
-        "Content-Length": range ? end - start + 1 : video.size,
-        ...(range ? { "Content-Range": `bytes ${start}-${end}/${video.size}` } : {})
+        "Content-Type": mimeType,
+        "Content-Length": range ? end - start + 1 : size,
+        ...(range ? { "Content-Range": `bytes ${start}-${end}/${size}` } : {})
     });
 
-    if (request.method === "HEAD" || video.size === 0) {
+    if (request.method === "HEAD" || size === 0) {
         response.end();
         return;
     }
@@ -202,7 +190,7 @@ const staticFiles = new Map([
     ["/vendor/ag-stack/main.esm.mjs", path.join(projectDirectory, "node_modules", "ag-stack", "dist", "package", "main.esm.mjs")]
 ]);
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, "http://localhost");
 
     if (requestUrl.pathname === "/api/videos") {
@@ -212,13 +200,22 @@ const server = http.createServer((request, response) => {
             return;
         }
 
-        sendJson(response, 200, listVideos.all().map((video) => ({
-            id: video.id,
-            title: video.title,
-            size: video.size,
-            contentType: video.mime_type,
-            url: `/api/videos/${encodeURIComponent(video.id)}`
-        })));
+        try {
+            const videos = await Promise.all(database.listVideos().map(async (video) => {
+                const stats = await fs.promises.stat(path.join(videoDirectory, video.file_name));
+                return {
+                    id: video.file_name,
+                    title: titleFromFileName(video.file_name),
+                    size: stats.size,
+                    uploadedAt: video.uploaded_at,
+                    url: `/api/videos/${encodeURIComponent(video.file_name)}`
+                };
+            }));
+            sendJson(response, 200, videos);
+        } catch (error) {
+            console.error("Unable to read the video catalogue:", error);
+            sendJson(response, 500, { error: "Unable to read the video catalogue." });
+        }
         return;
     }
 
