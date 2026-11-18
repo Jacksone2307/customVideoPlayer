@@ -1,0 +1,4 @@
+backend/videos/
+backend/videos.sqlite
+backend/videos.sqlite-shm
+backend/videos.sqlite-wal
