@@ -1,4 +1,4 @@
-# Stillroom video library
+# Custom Video Player
 
 A small, self-hosted video library built with browser Web Components and Node.js. The catalogue metadata is stored in SQLite; the video files stay on disk.
 
@@ -15,8 +15,9 @@ The current version is for browsing and playing files already placed in the vide
 
 ## Components
 
-- `<video-player>` provides native browser playback controls.
-- `<video-catalogue>` displays the indexed videos and emits a selection event.
-- `<video-datasource>` retrieves the catalogue from `/api/videos` and connects selection to the player.
+- `<video-player>` in `frontend/components/video-player.js` provides native browser playback controls.
+- `<video-catalogue>` in `frontend/components/video-catalogue.js` displays the indexed videos and emits a selection event.
+- `<video-datasource>` in `frontend/components/video-datasource.js` retrieves the catalogue from `/api/videos` and connects selection to the player.
+- `frontend/components/helpers/format-file-size.js` exports the shared file-size formatter.
 
 The Node server indexes video files into SQLite at startup and serves byte ranges so browser playback can seek.

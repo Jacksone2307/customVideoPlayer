@@ -1,53 +1,4 @@
-function formatFileSize(bytes) {
-    if (bytes < 1024 * 1024) {
-        return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    }
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-class VideoPlayer extends HTMLElement {
-    connectedCallback() {
-        if (this.initialized) {
-            return;
-        }
-        this.initialized = true;
-        this.innerHTML = `
-            <section class="player-panel" aria-label="Video player">
-                <div class="video-stage">
-                    <video controls playsinline preload="metadata" hidden></video>
-                    <div class="player-placeholder">
-                        <span class="placeholder-icon" aria-hidden="true">▶</span>
-                        <p>Your next favorite, right here.</p>
-                        <span>Choose a video from your library to begin.</span>
-                    </div>
-                </div>
-                <div class="now-playing">
-                    <div>
-                        <p class="eyebrow">NOW PLAYING</p>
-                        <h2>Nothing selected</h2>
-                    </div>
-                    <span class="video-file-size"></span>
-                </div>
-            </section>
-        `;
-
-        this.video = this.querySelector("video");
-        this.placeholder = this.querySelector(".player-placeholder");
-        this.titleLabel = this.querySelector(".now-playing h2");
-        this.fileSize = this.querySelector(".video-file-size");
-        this.video.addEventListener("error", () => {
-            this.fileSize.textContent = "This video could not be played.";
-        });
-    }
-
-    setVideo(video) {
-        this.video.src = video.url;
-        this.video.hidden = false;
-        this.placeholder.hidden = true;
-        this.titleLabel.textContent = video.title;
-        this.fileSize.textContent = formatFileSize(video.size);
-    }
-}
+import { formatFileSize } from "./helpers/format-file-size.js";
 
 class VideoCatalogue extends HTMLElement {
     connectedCallback() {
@@ -155,39 +106,4 @@ class VideoCatalogue extends HTMLElement {
     }
 }
 
-class VideoDatasource extends HTMLElement {
-    connectedCallback() {
-        if (this.initialized) {
-            return;
-        }
-        this.initialized = true;
-        this.catalogue = this.querySelector("video-catalogue");
-        this.player = this.querySelector("video-player");
-        this.addEventListener("video-selected", (event) => {
-            this.player.setVideo(event.detail.video);
-        });
-        this.addEventListener("video-retry", () => this.loadVideos());
-        this.loadVideos();
-    }
-
-    async loadVideos() {
-        try {
-            const response = await fetch("/api/videos");
-            if (!response.ok) {
-                throw new Error(`Video request failed with status ${response.status}.`);
-            }
-            const videos = await response.json();
-            if (!Array.isArray(videos)) {
-                throw new Error("The video library returned an invalid response.");
-            }
-            this.catalogue.setVideos(videos);
-        } catch (error) {
-            console.error("Unable to load the video library:", error);
-            this.catalogue.setError();
-        }
-    }
-}
-
-customElements.define("video-player", VideoPlayer);
 customElements.define("video-catalogue", VideoCatalogue);
-customElements.define("video-datasource", VideoDatasource);

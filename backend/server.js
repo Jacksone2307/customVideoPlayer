@@ -194,7 +194,10 @@ const staticFiles = new Map([
     ["/", path.join(frontendDirectory, "index.html")],
     ["/index.html", path.join(frontendDirectory, "index.html")],
     ["/css/style.css", path.join(frontendDirectory, "css", "style.css")],
-    ["/js/components.js", path.join(frontendDirectory, "js", "components.js")]
+    ["/components/video-datasource.js", path.join(frontendDirectory, "components", "video-datasource.js")],
+    ["/components/video-player.js", path.join(frontendDirectory, "components", "video-player.js")],
+    ["/components/video-catalogue.js", path.join(frontendDirectory, "components", "video-catalogue.js")],
+    ["/components/helpers/format-file-size.js", path.join(frontendDirectory, "components", "helpers", "format-file-size.js")]
 ]);
 
 const server = http.createServer((request, response) => {
