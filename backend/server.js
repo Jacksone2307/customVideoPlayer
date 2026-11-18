@@ -98,7 +98,7 @@ function serveStaticFile(request, response, filePath) {
 
         const contentType = filePath.endsWith(".css")
             ? "text/css; charset=utf-8"
-            : filePath.endsWith(".js")
+            : filePath.endsWith(".js") || filePath.endsWith(".mjs")
                 ? "text/javascript; charset=utf-8"
                 : "text/html; charset=utf-8";
         response.writeHead(200, {
@@ -197,7 +197,9 @@ const staticFiles = new Map([
     ["/components/video-datasource.js", path.join(frontendDirectory, "components", "video-datasource.js")],
     ["/components/video-player.js", path.join(frontendDirectory, "components", "video-player.js")],
     ["/components/video-catalogue.js", path.join(frontendDirectory, "components", "video-catalogue.js")],
-    ["/components/helpers/format-file-size.js", path.join(frontendDirectory, "components", "helpers", "format-file-size.js")]
+    ["/components/helpers/format-file-size.js", path.join(frontendDirectory, "components", "helpers", "format-file-size.js")],
+    ["/vendor/ag-grid-community/main.esm.mjs", path.join(projectDirectory, "node_modules", "ag-grid-community", "dist", "package", "main.esm.mjs")],
+    ["/vendor/ag-stack/main.esm.mjs", path.join(projectDirectory, "node_modules", "ag-stack", "dist", "package", "main.esm.mjs")]
 ]);
 
 const server = http.createServer((request, response) => {

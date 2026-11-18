@@ -1,4 +1,7 @@
+import { AllCommunityModule, createGrid, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { formatFileSize } from "./helpers/format-file-size.js";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 class VideoCatalogue extends HTMLElement {
     connectedCallback() {
@@ -7,78 +10,52 @@ class VideoCatalogue extends HTMLElement {
         }
         this.initialized = true;
         this.innerHTML = `
-            <section class="catalogue-panel" aria-labelledby="catalogue-title">
-                <div class="catalogue-heading">
-                    <div>
-                        <p class="eyebrow">YOUR COLLECTION</p>
-                        <h2 id="catalogue-title">Video library</h2>
-                    </div>
-                    <span class="video-count" aria-live="polite"></span>
-                </div>
-                <ul class="video-list"></ul>
-                <div class="catalogue-message" role="status" hidden></div>
-            </section>
+            <div data-grid style="height: 420px"></div>
+            <div role="status" hidden></div>
         `;
-        this.list = this.querySelector(".video-list");
-        this.count = this.querySelector(".video-count");
-        this.message = this.querySelector(".catalogue-message");
+
+        this.grid = this.querySelector("[data-grid]");
+        this.message = this.querySelector("[role=status]");
+        this.gridApi = createGrid(this.grid, {
+            columnDefs: [
+                { field: "title", headerName: "Video", flex: 2, minWidth: 120, sortable: true },
+                {
+                    field: "size",
+                    headerName: "Size",
+                    flex: 1,
+                    minWidth: 90,
+                    sortable: true,
+                    valueFormatter: ({ value }) => formatFileSize(value)
+                }
+            ],
+            defaultColDef: { resizable: true },
+            getRowId: ({ data }) => data.id,
+            rowSelection: {
+                mode: "singleRow",
+                checkboxes: false,
+                headerCheckbox: false,
+                enableClickSelection: true
+            },
+            theme: themeQuartz,
+            onRowClicked: ({ data }) => {
+                this.dispatchEvent(new CustomEvent("video-selected", {
+                    bubbles: true,
+                    detail: { video: data }
+                }));
+            },
+            overlayNoRowsTemplate:
+                '<span>No videos found. Add files to backend/videos and restart the server.</span>',
+            rowData: []
+        });
     }
 
     setVideos(videos) {
-        this.list.replaceChildren();
-        this.message.hidden = videos.length > 0;
-        this.message.replaceChildren();
-        this.count.textContent = `${videos.length} ${videos.length === 1 ? "video" : "videos"}`;
+        this.message.hidden = true;
+        this.grid.hidden = false;
+        this.gridApi.setGridOption("rowData", videos);
 
-        if (videos.length === 0) {
-            this.message.innerHTML = `
-                <div class="empty-library-icon" aria-hidden="true">＋</div>
-                <h3>Your library is waiting</h3>
-                <p>Add video files to <code>backend/videos</code>, then restart the server.</p>
-                <span>MP4, M4V, MOV, OGV, OGG, and WebM are supported.</span>
-            `;
-            this.message.hidden = false;
-            return;
-        }
-
-        for (const [index, video] of videos.entries()) {
-            const item = document.createElement("li");
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "video-card";
-            button.setAttribute("aria-label", `Play ${video.title}`);
-
-            const thumbnail = document.createElement("span");
-            thumbnail.className = "video-thumbnail";
-            thumbnail.setAttribute("aria-hidden", "true");
-            thumbnail.innerHTML = '<span class="thumbnail-play">▶</span>';
-
-            const details = document.createElement("span");
-            details.className = "video-card-details";
-            const title = document.createElement("span");
-            title.className = "video-card-title";
-            title.textContent = video.title;
-            const metadata = document.createElement("span");
-            metadata.className = "video-card-meta";
-            metadata.textContent = `${String(index + 1).padStart(2, "0")}  ·  ${formatFileSize(video.size)}`;
-            details.append(title, metadata);
-            button.append(thumbnail, details);
-
-            button.addEventListener("click", () => {
-                this.list.querySelector(".video-card.is-selected")?.classList.remove("is-selected");
-                button.classList.add("is-selected");
-                this.dispatchEvent(new CustomEvent("video-selected", {
-                    bubbles: true,
-                    detail: { video }
-                }));
-            });
-            item.append(button);
-            this.list.append(item);
-        }
-
-        const firstCard = this.list.querySelector(".video-card");
-        if (firstCard) {
-            firstCard.classList.add("is-selected");
+        if (videos.length > 0) {
+            this.gridApi.getRowNode(videos[0].id)?.setSelected(true);
             this.dispatchEvent(new CustomEvent("video-selected", {
                 bubbles: true,
                 detail: { video: videos[0] }
@@ -87,21 +64,17 @@ class VideoCatalogue extends HTMLElement {
     }
 
     setError() {
-        this.list.replaceChildren();
-        this.count.textContent = "";
+        this.grid.hidden = true;
         this.message.replaceChildren();
-        const heading = document.createElement("h3");
-        heading.textContent = "Your library couldn't be loaded";
-        const description = document.createElement("p");
-        description.textContent = "Check that the video library server is running, then try again.";
+        this.message.append("Your library couldn't be loaded. ");
+
         const retry = document.createElement("button");
         retry.type = "button";
-        retry.className = "retry-button";
         retry.textContent = "Try again";
         retry.addEventListener("click", () => {
             this.dispatchEvent(new CustomEvent("video-retry", { bubbles: true }));
         });
-        this.message.append(heading, description, retry);
+        this.message.append(retry);
         this.message.hidden = false;
     }
 }

@@ -5,6 +5,9 @@
   "scripts": {
     "start": "node backend/server.js"
   },
+  "dependencies": {
+    "ag-grid-community": "^36.3.0"
+  },
   "engines": {
     "node": ">=22.13.0"
   }
