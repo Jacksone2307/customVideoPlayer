@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="description" content="A personal home for your video collection.">
-    <title>Stillroom — your video library</title>
+    <meta name="theme-color" content="#14211b">
+    <meta name="description" content="Robin is a free, personal home for your video collection.">
+    <title>Robin — your video library</title>
     <link rel="stylesheet" href="/css/style.css">
     <script type="importmap">
         {
@@ -16,15 +16,21 @@
         }
     </script>
 </head>
-<body>
+<body data-theme="dark" data-ag-theme-mode="dark">
     <video-datasource>
         <div class="page-shell">
             <header class="site-header">
-                <a class="brand" href="/" aria-label="Stillroom home">
+                <a class="brand" href="/" aria-label="Robin home">
                     <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-                    <span>stillroom</span>
+                    <span>robin</span>
                 </a>
-                <span class="private-label"><span class="status-dot"></span> Your personal library</span>
+                <div class="header-actions">
+                    <span class="private-label"><span class="status-dot"></span> Your personal library</span>
+                    <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+                        <span class="theme-icon" aria-hidden="true">☼</span>
+                        <span class="theme-label">Light mode</span>
+                    </button>
+                </div>
             </header>
             <main>
                 <section class="library-layout" aria-label="Video library">

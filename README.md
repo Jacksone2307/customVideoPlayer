@@ -1,6 +1,6 @@
-# Custom Video Player
+# Robin Video Library
 
-A small, self-hosted video library built with browser Web Components and Node.js. The catalogue metadata is stored in SQLite; the video files stay on disk.
+Robin is a free, self-hosted video library built with browser Web Components and Node.js. It has a woodland-green look, a light/dark theme switch, and an AG Grid-powered catalogue. While a video is playing, the catalogue hides to give the player the full page width. Video metadata is stored in SQLite; video files stay on disk.
 
 ## Run it
 

@@ -12,7 +12,7 @@ class VideoPlayer extends HTMLElement {
                     <video controls playsinline preload="metadata" hidden></video>
                     <div class="player-placeholder">
                         <span class="placeholder-icon" aria-hidden="true">▶</span>
-                        <p>Your next favorite, right here.</p>
+                        <p>Make yourself at home.</p>
                         <span>Choose a video from your library to begin.</span>
                     </div>
                 </div>
@@ -21,7 +21,9 @@ class VideoPlayer extends HTMLElement {
                         <p class="eyebrow">NOW PLAYING</p>
                         <h2>Nothing selected</h2>
                     </div>
-                    <span class="video-file-size"></span>
+                    <div class="player-details">
+                        <span class="video-file-size"></span>
+                    </div>
                 </div>
             </section>
         `;
@@ -37,6 +39,7 @@ class VideoPlayer extends HTMLElement {
 
     setVideo(video) {
         this.video.src = video.url;
+        this.video.controls = true;
         this.video.hidden = false;
         this.placeholder.hidden = true;
         this.titleLabel.textContent = video.title;
